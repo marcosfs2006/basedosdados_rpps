@@ -93,7 +93,7 @@ head(draa_compromissos)
 # Exportar a base tratada
 
 ```{r}
-write_csv2(draa_compromissos, path="../output/draa_valores_compromissos.csv")
+write_csv2(draa_compromissos, file="../output/draa_valores_compromissos.csv")
 ```
 
 
