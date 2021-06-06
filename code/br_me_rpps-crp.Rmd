@@ -1,0 +1,98 @@
+---
+title: "CRP - Certificado de Regularidade Previenciária"
+author: "Marcos F Silva"
+date: "24/05/2021"
+output: html_document
+---
+
+</br>
+
+# Descrição da base
+
+----
+
+
+**Conteúdo:**
+
+Este arquivo contém informações sobre o Certificado de Regularidade Previdenciária do Ente. O CRP tem validade de 180 dias, devendo ser constantemente atualizado pelo Ente. A atualização ocorre somente se o Ente estiver regular em um conjunto de crítérios definidos pela SPREV. O Ente com CRP inválido está sujeito a algumas restrições.  
+
+
+**Fonte dos dados:**
+
+Dados disponibilizados pela Secretaria de Previdência Social do Ministério  da Economia (SPREV/ME) na página https://www.gov.br/previdencia/pt-br/assuntos/previdencia-no-servico-publico/estatisticas-e-informacoes-dos-rpps-1/estatisticas-e-informacoes-dos-rpps
+
+
+**Periodicidade de atualização**
+
+Irregular. A SPREV não possui uma periodicidade fixa para divulgar dados atualizados.
+
+
+**Problemas conhecidos na base:**
+
+* Não há consistência na nomeação dos arquivos das atualizações
+* Em algumas atualizações foram identificadas duplicidade de números de CRP no arquivo. A versão disponibilizada na "basedosdados.org" já está tratada quanto a este aspecto.   
+* Quando a data de extração dos dados conincide com a data final de validade do CRP o mesmo é considerado `VENCIDO`. A versão disponibilizada faz a correção caso exista problema. 
+
+**A implementar:**
+
+* Importar diretamente do repositório do SERPRO
+* Incluir uma coluna com o código do IBGE
+
+```{r}
+# Carregar os pacotes necessários
+options(scipen = 999)
+library(readr)
+library(readxl)
+library(dplyr)
+library(lubridate)
+```
+
+```{r}
+crp <- read_excel("../input/5- Validade CRP_Mar_2021_Extração_Em__2021-04-19T09_12_09.xlsx") %>%
+            rename(sigla_uf = UF,
+                  nome_ente = ENTE,
+                  numero_crp = `NR CRP`,
+                  data_emissao = `DATA DE EMISSÃO`,
+                  data_validade = `DATA DE VALIDADE`,
+                  judicial = `CRP JUDICIAL`,
+                  tipo_regime = `TIPO DE REGIME`,
+                  situacao = `SITUAÇÃO DO CRP`) %>%
+             mutate(data_emissao  = dmy(data_emissao),
+                    data_validade = dmy(data_validade))
+
+head(crp)
+
+```
+
+```{r}
+# Quantidade de linhas e colunas:
+dim(crp)
+```
+
+
+```{r}
+# Teste: Existe duplicidade de CRP na base? 
+any(duplicated(crp$numero_crp)) 
+```
+
+
+## Exportar a base tratada
+
+```{r}
+write_csv2(crp, path="../output/crp.csv")
+```
+
+
+## Dicionário de dados
+
+`sigla_uf` : sigla da unidade da federação    
+`nome_ente`: nome do Ente   
+`numero_crp`: número do CRP   
+`data_emissao`: data de emissão do CRP   
+`data_validade`: data de validade do CRP. O CRP tem validade de 180 dias.   
+`judicial`: indica se o CRP foi obtido pela via judicial.    
+`tipo_regime`: indica a qual regime previdenciário o Ente está vinculado   
+`situacao`: situação do CRP: `VÁLIDO` ou `VENCIDO` conforme a data de extração dos dados seja anterior ou posterior à data de validade dos dados.
+
+**Data de extração**:19/04/2021
+

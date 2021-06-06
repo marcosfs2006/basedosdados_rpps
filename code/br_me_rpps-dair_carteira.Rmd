@@ -1,0 +1,129 @@
+---
+title: "DAIR"
+author: "Marcos F Silva"
+date: "25/05/2021"
+output: html_document
+---
+
+</br>
+
+# Descrição da base
+
+----
+
+
+**Conteúdo:** 
+
+A base de dados do DAIR-Carteira disponibiliza informações relativas aos ativos que os RPPS possuem em sua carteira de investimentos.
+
+A base de dados contém informações a partir de 2013.
+
+</br>
+
+**Fonte dos dados:** 
+
+Dados disponibilizados pela Secretaria de Previdência Social do Ministério  da Economia (SPREV/ME) na página https://www.gov.br/previdencia/pt-br/assuntos/previdencia-no-servico-publico/estatisticas-e-informacoes-dos-rpps-1/estatisticas-e-informacoes-dos-rpps
+
+</br>
+
+**Problemas conhecidos na base:** 
+
+* Até Dez de 2016 os dados eram bimestrais. A partir de Jan de 2017 os dados passaram a ser mensais       
+* O enquadramento dos ativos relativos a fundos de investimentos é feito pelos gestores dos RPPS e podem não coincidir com o enquadramento sugerido pela SPREV           
+
+</br>
+
+**A implementar:**
+
+* Importar diretamente do repositório do SERPRO    
+* Incluir o código do IBGE na base de dados   
+
+</br>
+
+
+# Importação e tratamento dos dados
+
+----
+
+## Carregamento dos pacotes necessários
+
+```{r, message=FALSE}
+options(scipen = 999)
+library(readr)
+library(readxl)
+library(dplyr)
+library(purrr)
+library(stringr)
+library(lubridate)
+
+```
+
+
+## Importação dos dados
+
+```{r}
+dair <- read_delim("../input/1 - Carteira_2013a2020_Extração_Em_2021-03-03T10_14_57.csv",
+                 delim = ",",
+                 locale = locale(encoding = "utf-8", #utf-8
+                                 decimal_mark = ",",
+                                 grouping_mark = ""),
+                 col_type=cols()) 
+
+
+names(dair) <- c("cnpj_ente", "sigla_uf", "nome_ente", "mes_ano", "segmento",
+                   "tipo_ativo", "limite_resolucao_cmn", "identificacao_ativo",
+                   "nome_ativo", "quantidade_quotas", "valor_atual_ativo", "valor_total_atual",
+                   "percentual_recursos_rpps", "patrimonio_liquido_fundo",
+                   "percentual_patrimonio_liquido_fundo")
+
+
+dair <- dair %>% 
+  mutate(identificacao_ativo = trimws(identificacao_ativo))
+
+
+dair <- dair %>% 
+          mutate(mes_ano = as.Date(parse_date_time(mes_ano, orders = c("%m%Y", "%m/%Y")))) 
+
+
+dair$tipo_ativo <- ifelse(dair$segmento == "Disponibilidades Financeiras", "Disp", dair$tipo_ativo)
+
+
+# Remover sinais de pontuação do CNPJ dos fundos de investimento 
+dair$identificacao_ativo <- gsub("[[:punct:]]", "", dair$identificacao_ativo)
+
+
+```
+
+
+</br>
+
+# Exportar a base tratada
+
+```{r}
+write_csv2(dair, file="../output/dair.csv")
+```
+
+
+</br>
+
+# Dicionário de dados
+
+Variável    |  Descrição
+:-----------|:-------------------------------------------
+`cnpj_ente` | CNPJ do ente federativo
+`sigla_uf` | sigla da unidade da federação
+`nome_ente` | nome do ente
+`mes_ano`| mês e ano de competência do DAIR. o dia é sempre o dia 1o. mas é importante registrar que a posição apresentada é a do último dia do mês.
+`segmento` | segmento a que pertence o ativo
+`tipo_ativo`| tipo de ativo no qual o RPPS investiu
+`limite_resolucao_cmn` | percentual máximo de seus recursos que o RPPS pode investir no tipo de ativo em referência
+`identificacao_ativo` | identificação do ativo. no caso de fundos de investimento, o CNPJ dos mesmos
+`nome_ativo` | nome do ativo
+`quantidade_quotas` | quantidade de cotas do ativo que o RPPS possui
+`valor_atual_ativo` |valor da unitário do ativo
+`valor_total_atual` |valor total do ativo que o RPPS possui
+`percentual_recursos_rpps` |percentual dos recursos do RPPS que o ativo representa
+`patrimonio_liquido_fundo` |patrimônio líquido do fundo de investimento
+`percentual_patrimonio_liquido_fundo` | percentual do património líquido do fundo que o valor investido pelo RPPS representa
+
+

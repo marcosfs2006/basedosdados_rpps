@@ -1,0 +1,255 @@
+---
+title: "DIPR"
+author: "Marcos F Silva"
+date: "24/05/2021"
+output: html_document
+---
+
+</br>
+
+# Descrição da base
+
+----
+
+**Conteúdo:** 
+
+A base de dados do DIPR disponibiliza informações relativas aos pagamentos e recebimentos de recursos dos RPPS e também das bases de cálculo das contribuições.
+
+</br>
+
+**Fonte dos dados:** 
+
+Dados disponibilizados pela Secretaria de Previdência Social do Ministério  da Economia (SPREV/ME) na página https://www.gov.br/previdencia/pt-br/assuntos/previdencia-no-servico-publico/estatisticas-e-informacoes-dos-rpps-1/estatisticas-e-informacoes-dos-rpps
+
+</br>
+
+**Periodicidade de atualização**
+
+Irregular. A SPREV não possui uma periodicidade fixa para divulgar dados atualizados.
+
+
+</br>
+
+**Problemas conhecidos na base:** 
+
+* xxx       
+* xxx       
+
+</br>
+
+**A implementar:**
+
+* Importar diretamente do repositório do SERPRO    
+* Incluir o CNPJ dos municípios na base de dados    
+* Incluir o código do IBGE na base de dados   
+
+</br>
+
+# Tratamento dos dados
+
+----
+
+## Carregamento dos pacotes necessários
+
+```{r, message=FALSE}
+options(scipen = 999)
+library(readr)
+library(readxl)
+library(dplyr)
+library(purrr)
+library(stringr)
+library(lubridate)
+
+```
+
+
+## Importação dos dados
+
+```{r}
+diretorio <- "../input/"
+arquivos_dipr <- list.files("../input", pattern="^RG-")
+
+dipr <- map_dfr(paste0(diretorio, arquivos_dipr),
+                read_excel,
+                sheet = "diprResultadoPrevidenciario",
+                skip = 4,
+                col_names = FALSE)
+
+names(dipr) <- c("ente", "uf", "competencia", "plano_segreg", "dt_info", "bc_pat_serv", 
+                 "bc_pat_serv_ug", "bc_pat_apo", "bc_pat_pen", "bc_serv", "bc_apo",
+                 "bc_pen", "ct_pat_serv", "ct_pat_serv_ug", "ct_pat_apo", "ct_pat_pen",
+                 "ct_serv", "ct_apo", "ct_pen", "deduc_pat", "deduc_pat_outros", "deduc_seg",
+                 "deduc_seg_outros", "aportes_amortiz", "aportes_insufin", "aportes_despadm",
+                 "aportes_pagtesouro", "aportes_outros", "parcelamentos", "bcug_pat", "bcug_serv",
+                 "bcug_serv_afast", "bcug_apos", "bcug_pen", "ctug_pat", "ctug_serv", "ctug_serv_afast",
+                 "ctug_apos", "ctug_pen", "rb_serv", "rb_apos", "rb_pen", "nb_serv", "nb_apos", "nb_pen",
+                 "nb_dep", "ing_contr", "ing_aportes", "ing_parc", "ing_acres_leg", "ing_contr_cedlic",
+                 "ing_comprev", "ing_aplicfin", "ing_ativos", "ing_outros", "desp_apo", "desp_pen_morte",
+                 "desp_auxdoenca", "desp_salmater", "desp_salfam", "desp_auxreclu", "desp_decjud",
+                 "desp_beneftesouro", "desp_despadm", "desp_invest", "desp_rest", "desp_comprev", 
+                 "desp_outras", "total_receita", "total_despesa", "resutado_final", "bcmil_pat_ativ",
+                 "bcmil_ativos", "bcmil_reserva", "bcmil_pen", "ctmil_pat", "ctmil_ativos", "ctmil_reserva",
+                 "ctmil_pen", "rbmil", "nbmil_ativos", "nbmil_reserva", "nbmil_pen", "nbmil_dep",
+                 "ingmil_contr", "ingmil_aportes", "ingmil_outras", "despmil_reseva", "despmil_penmorte",
+                 "despmil_outras", "resultado_final")
+
+head(dipr)
+```
+
+
+## Tratamento da base de dados
+
+(a) - Corrigir os nomes dos Entes para coincidir com os nomes na base `br_sprev-me_regime_previdenciario_entes`
+
+
+```{r}
+
+dipr$ente <- gsub("^Prefeitura Municipal d[eoa] ", "", dipr$ente)
+
+```
+
+
+(b) - Conversão das colunas de valores monetários para o formato numérico
+
+
+```{r}
+# Definição de uma função para realizar a conversão para o formato numérico
+
+convnum <- function(x){
+  x <- gsub("\\.", "", x)
+  x <- gsub(",", ".", x)
+  as.numeric(x)
+}
+
+```
+
+
+```{r}
+# Aplicação da função às colunas desejadas
+
+dipr <- as_tibble(map_at(.x = dipr,
+                         .at = names(dipr)[-(1:5)],
+                         .f = convnum))
+
+# Conversão das variáveis 'competencia' e 'dt_info' para o formato data
+
+dipr <- dipr %>% 
+  mutate(competencia = dmy(paste("01", competencia, sep = "/")),
+             dt_info = dmy(dt_info)) 
+
+
+```
+
+</br>
+
+# Exportar a base tratada
+
+```{r, eval=FALSE}
+write_csv2(dipr, path="../output/dipr.csv")
+```
+
+
+</br>
+
+# **Dicionário de dados**
+
+**Nota** - A descrição das variáveis reflete a minha compreensão das mesmas com base na experiência de trabalho com essa base de dados.
+
+Coluna    | Descrição   
+----------|------------------------------------------------------------------
+**ente** | Nome do Ente
+**uf** | Sigla da unidade da federação
+**competencia** | Mês e ano de competência das receitas e despesas
+**plano_segreg** | Indica se o ingresso ou dispêndio está vinculado ao plano previdenciário ou ao plano financeiro, Valores possíveis: "Financeiro", "Previdenciário"
+**dt_info** | 
+**bc_pat_serv** | Base de cálculo - contribuição patronal - relativa aos servidores ativos  
+**bc_pat_serv_ug** | Base de cálculo - contribuição patronal - relativa aos servidores da unidade gestora do RPPS
+**bc_pat_apo** | Base de cálculo - contribução patronal - relativa aos aposentados
+**bc_pat_pen** | Base de cálculo - contribuição patronal - relativa aos pensionistas
+**bc_serv** | Base de cálculo - contribuição do servidor ativo
+**bc_apo** | Base de cálculo - contribuição do aposentado
+**bc_pen** | Base de cálculo - contribuição do pensionista   
+**ct_pat_serv** | Contribuição patronal repassada - relativa aos servidores ativos 
+**ct_pat_serv_ug** | Contribuição patronal repassada - relativa a servidores afastados com benefícios pagos pela unidade gestora do RPPS (auxílios)
+**ct_pat_apo** | Contribuição patronal repassada - relativa aos aposentados
+**ct_pat_pen** | Contribuição patronal repassada - relativa aos pensionistas
+**ct_serv** | Contribuição dos servidores ativos
+**ct_apo** | Contribução dos aposentados
+**ct_pen** | Contribuição dos pensionistas
+**deduc_pat** | Deduções da contribuição patronal repassada - relativa benefícios pagos pelo Ente de responsabilidade do RPPS
+**deduc_pat_outros** | Deduções da contribução patronal repassasa - outras deduções
+**deduc_seg** | Dedução da contribuição do segurado - relativa benefícios pagos pelo Ente de responsabilidade do RPPS
+**deduc_seg_outros** | Dedução da contribução do segurado - outras deduções
+**aportes_amortiz** | Aportes e transferências de recursos - amortização do déficit atuarial
+**aportes_insufin** | Aportes e transferências de recursos - cobertura de insuficiência financeira
+**aportes_despadm** | Aportes e transferência de recursos - cobertura de despesas administrativas
+**aportes_pagtesouro** | Aportes e transferência de recursos - pagamento de benefícios de responsabilidade do tesouro
+**aportes_outros** | Aportes e transferência de recursos - outros
+**parcelamentos** | Ingressos de recursos oriundos de parcelamentos de débitos
+**bcug_pat** | 
+**bcug_serv** |
+**bcug_serv_afast** |
+**bcug_apos** |
+**bcug_pen** |
+**ctug_pat** |
+**ctug_serv** |
+**ctug_serv_afast** |
+**ctug_apos** |
+**ctug_pen** |
+**rb_serv** |
+**rb_apos** |
+**rb_pen** |
+**nb_serv** | Número de beneficiários - servidores
+**nb_apos** | Número de beneficiários - aposentados
+**nb_pen**  | Número de beneficiários - pensionistas 
+**nb_dep**  | Número de beneficiários - dependentes
+**ing_contr** | Ingresso de recursos - contribuições
+**ing_aportes** | Ingresso de recursos - aportes
+**ing_parc**   | Ingresso de recursos - parcelamentos
+**ing_acres_leg** | Ingresso de recursos - acréscimos legais de contribuições
+**ing_contr_cedlic** | Ingresso de recursos - contribuições de servidores cedidos ou licenciados
+**ing_comprev** | Ingresso de recursos - compensação financeira
+**ing_aplicfin** | Ingresso de recursos - receitas líquidas de aplicações financeiras e investimentos
+**ing_ativos** | Ingresso de recursos - rendimento dos demais ativos
+**ing_outros** | Ingresso de recursos - outras receitas (10.9)
+**desp_apo** |
+**desp_pen_morte** |
+**desp_auxdoenca** |
+**desp_salmater** |
+**desp_salfam** |
+**desp_auxreclu** |
+**desp_decjud** |
+**desp_beneftesouro** |
+**desp_despadm** |
+**desp_invest** |
+**desp_rest** |
+**desp_comprev** |
+**desp_outras** |
+**total_receita** |
+**total_despesa** |
+**resutado_final** |
+**bcmil_pat_ativ** |
+**bcmil_ativos** |
+**bcmil_reserva** |
+**bcmil_pen** |
+**ctmil_pat** |
+**ctmil_ativos** |
+**ctmil_reserva** |
+**ctmil_pen** |
+**rbmil** |
+**nbmil_ativos** |
+**nbmil_reserva** |
+**nbmil_pen** |
+**nbmil_dep** |
+**ingmil_contr** |
+**ingmil_aportes** |
+**ingmil_outras** |
+**despmil_reseva** |
+**despmil_penmorte** |
+**despmil_outras** |
+**resultado_final** |
+
+
+
+
+

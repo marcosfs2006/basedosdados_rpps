@@ -1,0 +1,124 @@
+---
+title: "DRAA - Valores Compromissos"
+author: "Marcos F Silva"
+date: "25/05/2021"
+output: html_document
+---
+
+</br>
+
+# Descrição da base
+
+----
+
+**Conteúdo:** 
+
+A base de dados `Valores Compromissos` que integra o conjunto de arquivos oriundos do preenchimento do DRAA disponibiliza informações relativas aos compromissos de longo prazo, expressos a valor presente atuarial, dos RPPS com seus beneficiários.
+
+</br>
+
+**Fonte dos dados:** 
+
+Dados disponibilizados pela Secretaria de Previdência Social do Ministério  da Economia (SPREV/ME) na página https://www.gov.br/previdencia/pt-br/assuntos/previdencia-no-servico-publico/estatisticas-e-informacoes-dos-rpps-1/estatisticas-e-informacoes-dos-rpps
+
+</br>
+
+**Problemas conhecidos na base:** 
+
+* xxx       
+* xxx       
+
+</br>
+
+**A implementar:**
+
+* Importar diretamente do repositório do SERPRO    
+* Incluir o CNPJ dos municípios na base de dados    
+* Incluir o código do IBGE na base de dados   
+
+</br>
+
+
+
+# Tratamento dos dados
+
+----
+
+### Carregamento dos pacotes necessários
+
+
+
+```{r}
+options(scipen = 999)
+
+library(readr)
+library(readxl)
+library(dplyr)
+library(lubridate)
+library(purrr)
+library(stringr)
+
+```
+
+
+### Importação dos dados
+
+```{r}
+draa_compromissos <- read_csv("../input/30 Valores_Compromissos_Extração_Em__2021-03-05T14_48_49.csv",
+                               locale=locale(encoding = "utf-8"), col_type=cols())
+
+
+# Renomeia as colunas
+draa_compromissos <- draa_compromissos %>% 
+  rename(cnpj_ente          = CNPJ,
+         sigla_uf           = UF,
+         nome_ente          = Ente,
+         ano                = Exercicio,
+         data_envio         = `Data de Envio`,
+         situacao_draa      = `Situacao do DRAA`,
+         tipo_plano         = `Tipo de Plano`,
+         tipo_massa         = `Tipo de Massa`,
+         codigo             = `Codigo Dem.  Result. Atuarial`,
+         descricao          = Descricao,
+         categoria          = Categoria,
+         vlr_geracao_atual  = `Valor da Geracao Atual`,
+         vlr_geracao_futura = `Valor da Geracao Futura`)
+
+head(draa_compromissos)
+```
+
+
+</br>
+
+# Exportar a base tratada
+
+```{r}
+write_csv2(draa_compromissos, path="../output/draa_valores_compromissos.csv")
+```
+
+
+</br>
+
+# **Dicionário de dados**
+
+
+Coluna    | Descrição   
+----------|------------------------------------------------------------------
+**cnpj_ente** | número do CNPJ do Ente   
+**sigla_uf** | sigla da unidade da federação   
+**nome_ente** | nome do Ente   
+**ano** | ano de referência do DRAA
+**data_envio** | data de encaminhamento do DRAA à SPREV
+**situacao_draa** | _status_ do DRAA no sistema da SPREV
+**tipo_plano** | indicador do plano: financeiro ou previdenciário
+**tipo_massa** | se os dados referem-se a servidores civis ou militares
+**codigo** | código do registro no DRAA   
+**descricao** | descrição do registro   
+**categoria** | indicação de que o registro refere-se a um título ou uma variável   
+**vlr_geracao_atual** | valor do registro considerando a geração atual   
+**vlr_geracao_futura** | valor do registro considerando a geração futura   
+
+
+
+
+
